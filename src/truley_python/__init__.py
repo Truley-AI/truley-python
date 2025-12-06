@@ -1,3 +1,3 @@
-from truley_python import logger
+from truley_python import console_logger
 
-__all__ = ["logger"]
+__all__ = ["console_logger"]
