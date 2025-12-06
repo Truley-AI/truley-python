@@ -1,6 +1,6 @@
 # truley-python
 
-Truley internal Python shared package providing structured logging.
+Truley internal Python shared package.
 
 ## Installation
 
@@ -14,14 +14,16 @@ Or using pip:
 pip install truley-python
 ```
 
-## Usage
+## Console Logger
+
+Structured logging module for console output.
 
 ### Basic Usage
 
 ```python
-from truley_python import create_logger
+from truley_python import console_logger
 
-logger = create_logger("my-service")
+logger = console_logger.create_logger("my-service")
 
 logger.info("Server started", port=8080)
 logger.debug("Processing request", request_id="req-123")
@@ -41,7 +43,7 @@ Supported levels (from lowest to highest):
 - `fatal` - Critical errors
 
 ```python
-logger = create_logger("my-service", level="debug")
+logger = console_logger.create_logger("my-service", level="debug")
 ```
 
 ### Output Formats
@@ -49,7 +51,7 @@ logger = create_logger("my-service", level="debug")
 **JSON format (default)** - Suitable for production:
 
 ```python
-logger = create_logger("backend")
+logger = console_logger.create_logger("backend")
 logger.info("Meeting created", tenantId="t-123", meetingId="m-456")
 # {"level":"info","time":1700000000000,"msg":"Meeting created","service":"backend","tenantId":"t-123","meetingId":"m-456"}
 ```
@@ -57,7 +59,7 @@ logger.info("Meeting created", tenantId="t-123", meetingId="m-456")
 **Pretty format** - Suitable for development:
 
 ```python
-logger = create_logger("backend", pretty=True)
+logger = console_logger.create_logger("backend", pretty=True)
 logger.info("Meeting created", tenantId="t-123")
 # [2024-01-15 10:30:00] INFO: Meeting created
 #     tenantId: t-123
@@ -89,6 +91,22 @@ Output:
     "stack": "Traceback (most recent call last):..."
   }
 }
+```
+
+### Intercepting Stdlib Logging
+
+Forward logs from libraries like uvicorn and fastapi to the structured logger:
+
+```python
+from truley_python import console_logger
+
+logger = console_logger.create_logger("my-service")
+
+console_logger.intercept_stdlib_logging(logger, [
+    "uvicorn",
+    "uvicorn.access",
+    "uvicorn.error",
+])
 ```
 
 ## Development
