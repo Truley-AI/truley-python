@@ -1,3 +1,4 @@
+import logging
 import sys
 import traceback
 from typing import Any, Literal
@@ -170,3 +171,58 @@ def create_logger(
         {"level":"info","time":1700000000000,"msg":"Meeting created","service":"backend","tenantId":"t-123","meetingId":"m-456"}
     """
     return Logger(service=service, level=level, pretty=pretty)
+
+
+class InterceptHandler(logging.Handler):
+    """Handler that intercepts stdlib logging and forwards to truley Logger."""
+
+    def __init__(self, truley_logger: Logger) -> None:
+        super().__init__()
+        self.truley_logger = truley_logger
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Map stdlib levels to truley levels
+        level_map = {
+            logging.DEBUG: "debug",
+            logging.INFO: "info",
+            logging.WARNING: "warn",
+            logging.ERROR: "error",
+            logging.CRITICAL: "fatal",
+        }
+
+        level = level_map.get(record.levelno, "info")
+        msg = record.getMessage()
+
+        getattr(self.truley_logger, level)(
+            msg,
+            logger_name=record.name,
+            module=record.module,
+        )
+
+
+def intercept_stdlib_logging(
+    truley_logger: Logger, loggers: list[str] | None = None
+) -> None:
+    """Intercept stdlib logging and forward to truley logger.
+
+    Args:
+        truley_logger: The truley Logger instance to forward logs to
+        loggers: List of logger names to intercept. If None, intercepts root logger.
+                 Common values: ["uvicorn", "uvicorn.access", "uvicorn.error", "fastapi"]
+
+    Example:
+        >>> logger = create_logger("bookish")
+        >>> intercept_stdlib_logging(logger, ["uvicorn", "uvicorn.access", "uvicorn.error"])
+    """
+    handler = InterceptHandler(truley_logger)
+
+    if loggers is None:
+        # Intercept root logger
+        logging.root.handlers = [handler]
+        logging.root.setLevel(logging.DEBUG)
+    else:
+        for name in loggers:
+            stdlib_logger = logging.getLogger(name)
+            stdlib_logger.handlers = [handler]
+            stdlib_logger.setLevel(logging.DEBUG)
+            stdlib_logger.propagate = False

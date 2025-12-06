@@ -1,3 +1,3 @@
-from truley_python.logger import Logger, create_logger
+from truley_python.logger import Logger, create_logger, intercept_stdlib_logging
 
-__all__ = ["Logger", "create_logger"]
+__all__ = ["Logger", "create_logger", "intercept_stdlib_logging"]
