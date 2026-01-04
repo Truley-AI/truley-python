@@ -1,19 +1,25 @@
 """OpenTelemetry tracing with auto-instrumentation.
 
-Auto-initializes on import if OTEL_EXPORTER_OTLP_ENDPOINT is set.
-Must be imported before FastAPI/httpx.
+Must call init_tracing() before importing FastAPI/httpx.
 
 Usage:
-    import truley_python.tracing  # Auto-initializes
+    from truley_python.tracing import init_tracing
+    init_tracing("http://localhost:4318", "my-service")
 
-Environment variables:
-    OTEL_EXPORTER_OTLP_ENDPOINT: Required. (e.g., http://localhost:4318)
-    OTEL_SERVICE_NAME: Optional. (default: unknown)
-    NODE_ENV or ENVIRONMENT: Optional. (default: development)
+    from fastapi import FastAPI  # Now instrumented
 """
 
-import os
 from typing import TypedDict
+
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 _initialized = False
 
@@ -33,8 +39,6 @@ def get_current_trace_context() -> TraceContext | None:
     if not _initialized:
         return None
 
-    from opentelemetry import trace
-
     span = trace.get_current_span()
     if span is None:
         return None
@@ -49,45 +53,19 @@ def get_current_trace_context() -> TraceContext | None:
     }
 
 
-def init_tracing(service_name: str | None = None) -> bool:
+def init_tracing(endpoint: str, service_name: str) -> None:
     """Initialize OpenTelemetry tracing.
 
     Args:
-        service_name: Override service name (default: OTEL_SERVICE_NAME or 'unknown')
-
-    Returns:
-        True if initialized, False if OTEL_EXPORTER_OTLP_ENDPOINT not set.
+        endpoint: OTLP HTTP endpoint (e.g., http://localhost:4318)
+        service_name: Service name for traces (e.g., "backend")
     """
     global _initialized
 
     if _initialized:
-        return True
+        return
 
-    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if not endpoint:
-        return False
-
-    from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-    from opentelemetry.instrumentation.logging import LoggingInstrumentor
-    from opentelemetry.instrumentation.requests import RequestsInstrumentor
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-    service = service_name or os.environ.get("OTEL_SERVICE_NAME", "unknown")
-    environment = os.environ.get("NODE_ENV") or os.environ.get(
-        "ENVIRONMENT", "development"
-    )
-
-    resource = Resource.create(
-        {
-            "service.name": service,
-            "deployment.environment": environment,
-        }
-    )
+    resource = Resource.create({"service.name": service_name})
 
     provider = TracerProvider(resource=resource)
     exporter = OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces")
@@ -100,8 +78,3 @@ def init_tracing(service_name: str | None = None) -> bool:
     LoggingInstrumentor().instrument(set_logging_format=False)
 
     _initialized = True
-    return True
-
-
-# Auto-initialize on import
-init_tracing()
