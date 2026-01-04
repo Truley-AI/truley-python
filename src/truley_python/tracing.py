@@ -22,6 +22,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 _initialized = False
+_service_name: str | None = None
 
 
 class TraceContext(TypedDict):
@@ -32,6 +33,11 @@ class TraceContext(TypedDict):
 def is_tracing_enabled() -> bool:
     """Check if tracing has been initialized."""
     return _initialized
+
+
+def get_service_name() -> str | None:
+    """Get the service name set by init_tracing."""
+    return _service_name
 
 
 def get_current_trace_context() -> TraceContext | None:
@@ -60,10 +66,12 @@ def init_tracing(endpoint: str, service_name: str) -> None:
         endpoint: OTLP HTTP endpoint (e.g., http://localhost:4318)
         service_name: Service name for traces (e.g., "backend")
     """
-    global _initialized
+    global _initialized, _service_name
 
     if _initialized:
         return
+
+    _service_name = service_name
 
     resource = Resource.create({"service.name": service_name})
 

@@ -82,12 +82,13 @@ class Logger:
 
     def __init__(
         self,
-        service: str,
         level: LevelStr = "info",
         pretty: bool = False,
     ) -> None:
-        self.service = service
-        self._logger = _loguru_logger.bind(service=service)
+        from truley_python.tracing import get_service_name
+
+        self.service = get_service_name() or "unknown"
+        self._logger = _loguru_logger.bind(service=self.service)
 
         # Remove default handler and add custom one
         self._logger.remove()
@@ -159,14 +160,14 @@ class Logger:
 
 
 def create_logger(
-    service: str,
     level: LevelStr = "info",
     pretty: bool = False,
 ) -> Logger:
-    """Create a structured logger for a service.
+    """Create a structured logger.
+
+    Service name is automatically taken from init_tracing().
 
     Args:
-        service: Service name (e.g., "backend", "analyzer")
         level: Log level ("debug", "verbose", "info", "warn", "error", "fatal")
         pretty: Use pretty format for development (default: JSON)
 
@@ -174,11 +175,12 @@ def create_logger(
         Logger instance
 
     Example:
-        >>> logger = create_logger("backend")
-        >>> logger.info("Meeting created", tenantId="t-123", meetingId="m-456")
-        {"level":"info","time":1700000000000,"msg":"Meeting created","service":"backend","tenantId":"t-123","meetingId":"m-456"}
+        >>> from truley_python.tracing import init_tracing
+        >>> init_tracing("http://localhost:4318", "backend")
+        >>> logger = create_logger()
+        >>> logger.info("Hello")
     """
-    return Logger(service=service, level=level, pretty=pretty)
+    return Logger(level=level, pretty=pretty)
 
 
 class InterceptHandler(logging.Handler):
@@ -219,7 +221,7 @@ def intercept_stdlib_logging(
                  Common values: ["uvicorn", "uvicorn.access", "uvicorn.error", "fastapi"]
 
     Example:
-        >>> logger = create_logger("bookish")
+        >>> logger = create_logger()
         >>> intercept_stdlib_logging(logger, ["uvicorn", "uvicorn.access", "uvicorn.error"])
     """
     handler = InterceptHandler(truley_logger)
