@@ -110,6 +110,14 @@ class Logger:
         error: BaseException | None = None,
         **kwargs: Any,
     ) -> None:
+        # Auto-inject trace context if tracing is enabled
+        from truley_python.tracing import get_current_trace_context, is_tracing_enabled
+
+        trace_ctx = get_current_trace_context() if is_tracing_enabled() else None
+        if trace_ctx:
+            kwargs.setdefault("trace_id", trace_ctx["trace_id"])
+            kwargs.setdefault("span_id", trace_ctx["span_id"])
+
         bound = self._logger.bind(**kwargs)
 
         if error is not None:
