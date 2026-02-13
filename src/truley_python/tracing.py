@@ -40,6 +40,18 @@ def get_service_name() -> str | None:
     return _service_name
 
 
+def get_trace_id() -> str | None:
+    """Get current trace ID as a 32-char hex string, or None if not tracing."""
+    if not _initialized:
+        return None
+
+    ctx = trace.get_current_span().get_span_context()
+    if not ctx.is_valid:
+        return None
+
+    return format(ctx.trace_id, "032x")
+
+
 def get_current_trace_context() -> TraceContext | None:
     """Get current trace context if available."""
     if not _initialized:
