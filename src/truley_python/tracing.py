@@ -11,7 +11,7 @@ Usage:
 
 from typing import TypedDict
 
-from opentelemetry import trace
+from opentelemetry import baggage, trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
@@ -57,6 +57,20 @@ def get_current_trace_context() -> TraceContext | None:
         "trace_id": format(ctx.trace_id, "032x"),
         "span_id": format(ctx.span_id, "016x"),
     }
+
+
+def get_baggage(key: str) -> str | None:
+    """Get a baggage value by key from the current context.
+
+    Args:
+        key: The baggage key to retrieve.
+
+    Returns:
+        The baggage value if found, None otherwise.
+    """
+    if not _initialized:
+        return None
+    return baggage.get_baggage(key)
 
 
 def init_tracing(endpoint: str, service_name: str) -> None:
